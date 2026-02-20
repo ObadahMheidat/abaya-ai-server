@@ -78,7 +78,11 @@ Full body mannequin, elegant studio background, premium fashion catalog style.
     size: "1024x1024"
   });
 
+if (imageResponse.data[0].url) {
   imageUrl = imageResponse.data[0].url;
+} else if (imageResponse.data[0].b64_json) {
+  imageUrl = `data:image/png;base64,${imageResponse.data[0].b64_json}`;
+}
 
   console.log("🖼 Image generated");
 
