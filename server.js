@@ -57,9 +57,41 @@ Return ONLY valid JSON:
       temperature: 0.7
     });
 
-    const result = {
-      result: response.choices[0].message.content
-    };
+let imageUrl = null;
+
+/* ===== SAFE IMAGE GENERATION ===== */
+try {
+
+  const imagePrompt = `
+Luxury abaya fashion photography.
+Color: ${input.fabric_color}
+Embroidery: ${input.embroidery_style}
+Placement: ${input.placement}
+Silhouette: ${input.silhouette}
+Occasion: ${input.occasion}.
+Full body mannequin, elegant studio background, premium fashion catalog style.
+`;
+
+  const imageResponse = await openai.images.generate({
+    model: "gpt-image-1",
+    prompt: imagePrompt,
+    size: "1024x1024"
+  });
+
+  imageUrl = imageResponse.data[0].url;
+
+  console.log("🖼 Image generated");
+
+} catch(imgErr){
+
+  console.log("Image skipped:", imgErr.message);
+
+}
+
+const result = {
+  result: response.choices[0].message.content,
+  image: imageUrl
+};
 
     /* ===== SAVE TO CACHE ===== */
     designCache[cacheKey] = result;
