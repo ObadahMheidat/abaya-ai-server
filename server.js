@@ -48,6 +48,8 @@ Rules:
 - Factory specs must be short production-ready bullet points.
 - DO NOT add markdown.
 - DO NOT add extra text outside JSON.
+- DO NOT add code fences
+- Return ONLY valid JSON
 `;
 
     const response = await openai.chat.completions.create({
@@ -83,3 +85,5 @@ Rules:
 app.listen(3000, () => {
   console.log("Server running at http://localhost:3000");
 });
+```txt
+Return ONLY raw JSON. No markdown. No code blocks.
