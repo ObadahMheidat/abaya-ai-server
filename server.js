@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
-require("dotenv").config({ override: true });
+require("dotenv").config();
 
 const app = express();
 
@@ -18,85 +18,56 @@ app.post("/generate-design", async (req, res) => {
 
     const input = req.body;
 
-    /* =========================
-       TEXT DESIGN GENERATION
-    ========================== */
+    /* ===================
+       TEXT GENERATION
+    ==================== */
 
     const prompt = `
-You are a luxury abaya fashion designer for Abaya Plaza.
+You are a luxury abaya designer.
 
-Create a premium custom abaya design.
-
-INPUT:
 Color: ${input.fabric_color}
 Embroidery: ${input.embroidery_style}
 Placement: ${input.placement}
 Silhouette: ${input.silhouette}
 Occasion: ${input.occasion}
 
-RETURN STRICT JSON FORMAT ONLY:
+Return ONLY valid JSON:
 
 {
-  "design_name": "",
-  "description": "",
-  "factory_specs": [
-    "",
-    "",
-    ""
-  ]
+ "design_name":"",
+ "description":"",
+ "factory_specs":[]
 }
-
-Rules:
-- Design name must sound luxury and elegant.
-- Description must feel premium and emotional (3-5 sentences).
-- Factory specs must be short production-ready bullet points.
-- DO NOT add markdown.
-- DO NOT add extra text outside JSON.
-- Return ONLY valid JSON.
 `;
 
     const response = await openai.chat.completions.create({
-
       model: "gpt-4o",
-
-      messages: [
-        { role: "user", content: prompt }
-      ],
-
-      temperature: 0.8
-
+      messages: [{ role: "user", content: prompt }]
     });
 
     const output = response.choices[0].message.content;
 
-    /* =========================
-       IMAGE GENERATION (NEW)
-    ========================== */
+    /* ===================
+       IMAGE GENERATION SAFE
+    ==================== */
 
-    const imagePrompt = `
-Luxury abaya fashion design.
-Color: ${input.fabric_color}
-Embroidery: ${input.embroidery_style}
-Placement: ${input.placement}
-Silhouette: ${input.silhouette}
-Occasion: ${input.occasion}.
-Elegant full body mannequin, studio fashion photography,
-minimal white background, premium modest fashion style.
-`;
+    let imageUrl = null;
 
-    const imageResponse = await openai.images.generate({
+    try {
 
-      model: "gpt-image-1",
-      prompt: imagePrompt,
-      size: "1024x1024"
+      const imageResponse = await openai.images.generate({
+        model: "gpt-image-1",
+        prompt: `Luxury abaya fashion photo, ${input.fabric_color}, studio background`,
+        size: "1024x1024"
+      });
 
-    });
+      imageUrl = imageResponse.data[0].url;
 
-    const imageUrl = imageResponse.data[0].url;
+    } catch (imgError) {
 
-    /* =========================
-       FINAL RESPONSE
-    ========================== */
+      console.log("Image generation skipped:", imgError.message);
+
+    }
 
     res.json({
       result: output,
@@ -105,7 +76,7 @@ minimal white background, premium modest fashion style.
 
   } catch (error) {
 
-    console.error("OpenAI Error:", error);
+    console.log("Main error:", error.message);
 
     res.status(500).json({
       error: "Failed to generate design"
@@ -115,7 +86,7 @@ minimal white background, premium modest fashion style.
 
 });
 
-/* Railway SAFE PORT */
+/* RAILWAY PORT FIX */
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
