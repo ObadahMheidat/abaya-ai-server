@@ -9,7 +9,11 @@ app.use(cors());
 app.use(express.json());
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+app.get("/", (req,res)=>{
+  res.send("Server is alive");
 });
 
 app.post("/generate-design", async (req, res) => {
@@ -18,77 +22,30 @@ app.post("/generate-design", async (req, res) => {
 
     const input = req.body;
 
-    /* ===================
-       TEXT GENERATION
-    ==================== */
-
-    const prompt = `
-You are a luxury abaya designer.
-
-Color: ${input.fabric_color}
-Embroidery: ${input.embroidery_style}
-Placement: ${input.placement}
-Silhouette: ${input.silhouette}
-Occasion: ${input.occasion}
-
-Return ONLY valid JSON:
-
-{
- "design_name":"",
- "description":"",
- "factory_specs":[]
-}
-`;
-
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }]
+      messages: [{
+        role:"user",
+        content:`Create luxury abaya design JSON using:
+        ${JSON.stringify(input)}`
+      }]
     });
-
-    const output = response.choices[0].message.content;
-
-    /* ===================
-       IMAGE GENERATION SAFE
-    ==================== */
-
-    let imageUrl = null;
-
-    try {
-
-      const imageResponse = await openai.images.generate({
-        model: "gpt-image-1",
-        prompt: `Luxury abaya fashion photo, ${input.fabric_color}, studio background`,
-        size: "1024x1024"
-      });
-
-      imageUrl = imageResponse.data[0].url;
-
-    } catch (imgError) {
-
-      console.log("Image generation skipped:", imgError.message);
-
-    }
 
     res.json({
-      result: output,
-      image: imageUrl
+      result: response.choices[0].message.content
     });
 
-  } catch (error) {
+  } catch(err){
 
-    console.log("Main error:", error.message);
-
-    res.status(500).json({
-      error: "Failed to generate design"
-    });
+    console.log(err);
+    res.status(500).json({error:"AI failed"});
 
   }
 
 });
 
-/* RAILWAY PORT FIX */
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+app.listen(PORT, ()=>{
+  console.log("Running on", PORT);
 });
