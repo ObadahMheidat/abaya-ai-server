@@ -19,19 +19,35 @@ app.post("/generate-design", async (req, res) => {
     const input = req.body;
 
     const prompt = `
-Create a luxury abaya design.
+You are a luxury abaya fashion designer for Abaya Plaza.
 
+Create a premium custom abaya design.
+
+INPUT:
 Color: ${input.fabric_color}
 Embroidery: ${input.embroidery_style}
 Placement: ${input.placement}
 Silhouette: ${input.silhouette}
 Occasion: ${input.occasion}
 
-Return:
+RETURN STRICT JSON FORMAT ONLY:
 
-Design Name:
-Description:
-Factory Specs:
+{
+  "design_name": "",
+  "description": "",
+  "factory_specs": [
+    "",
+    "",
+    ""
+  ]
+}
+
+Rules:
+- Design name must sound luxury and elegant.
+- Description must feel premium and emotional (3-5 sentences).
+- Factory specs must be short production-ready bullet points.
+- DO NOT add markdown.
+- DO NOT add extra text outside JSON.
 `;
 
     const response = await openai.chat.completions.create({
@@ -40,17 +56,21 @@ Factory Specs:
 
       messages: [
         { role: "user", content: prompt }
-      ]
+      ],
+
+      temperature: 0.8
 
     });
 
+    const output = response.choices[0].message.content;
+
     res.json({
-      result: response.choices[0].message.content
+      result: output
     });
 
   } catch (error) {
 
-    console.error(error);
+    console.error("OpenAI Error:", error);
 
     res.status(500).json({
       error: "Failed to generate design"
@@ -61,7 +81,5 @@ Factory Specs:
 });
 
 app.listen(3000, () => {
-
   console.log("Server running at http://localhost:3000");
-
 });
