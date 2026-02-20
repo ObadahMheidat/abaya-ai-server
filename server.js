@@ -18,6 +18,10 @@ app.post("/generate-design", async (req, res) => {
 
     const input = req.body;
 
+    /* =========================
+       TEXT DESIGN GENERATION
+    ========================== */
+
     const prompt = `
 You are a luxury abaya fashion designer for Abaya Plaza.
 
@@ -48,8 +52,7 @@ Rules:
 - Factory specs must be short production-ready bullet points.
 - DO NOT add markdown.
 - DO NOT add extra text outside JSON.
-- DO NOT add code fences
-- Return ONLY valid JSON
+- Return ONLY valid JSON.
 `;
 
     const response = await openai.chat.completions.create({
@@ -66,8 +69,38 @@ Rules:
 
     const output = response.choices[0].message.content;
 
+    /* =========================
+       IMAGE GENERATION (NEW)
+    ========================== */
+
+    const imagePrompt = `
+Luxury abaya fashion design.
+Color: ${input.fabric_color}
+Embroidery: ${input.embroidery_style}
+Placement: ${input.placement}
+Silhouette: ${input.silhouette}
+Occasion: ${input.occasion}.
+Elegant full body mannequin, studio fashion photography,
+minimal white background, premium modest fashion style.
+`;
+
+    const imageResponse = await openai.images.generate({
+
+      model: "gpt-image-1",
+      prompt: imagePrompt,
+      size: "1024x1024"
+
+    });
+
+    const imageUrl = imageResponse.data[0].url;
+
+    /* =========================
+       FINAL RESPONSE
+    ========================== */
+
     res.json({
-      result: output
+      result: output,
+      image: imageUrl
     });
 
   } catch (error) {
@@ -82,6 +115,9 @@ Rules:
 
 });
 
-app.listen(3000, () => {
-  console.log("Server running at http://localhost:3000");
+/* Railway SAFE PORT */
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
 });
