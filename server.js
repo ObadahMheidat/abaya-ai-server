@@ -116,6 +116,31 @@ const result = {
 
 });
 
+/* ===== DESIGN PURCHASE ===== */
+app.post("/purchase/:id", (req,res)=>{
+
+  const design = designStore.find(
+    d => d.id == req.params.id
+  );
+
+  if(!design){
+    return res.status(404).json({
+      error:"Design not found"
+    });
+  }
+
+  /* unlock designer */
+  design.purchased = true;
+  design.designer_status = "verified";
+
+  res.json({
+    success:true,
+    message:"Designer verified!",
+    design
+  });
+
+});
+
 /* RAILWAY SAFE PORT */
 const PORT = process.env.PORT || 3000;
 
