@@ -12,15 +12,25 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/* ===== SIMPLE MEMORY CACHE ===== */
-const designCache = {};
+/* ===============================
+   MEMORY STORAGE (MVP VERSION)
+================================ */
 
-/* HEALTH CHECK */
+const designCache = {};
+const designStore = [];
+
+/* ===============================
+   HEALTH CHECK
+================================ */
+
 app.get("/", (req,res)=>{
   res.send("Server working + OpenAI ready");
 });
 
-/* AI DESIGN ROUTE */
+/* ===============================
+   AI DESIGN GENERATION
+================================ */
+
 app.post("/generate-design", async (req, res) => {
 
   try {
@@ -28,7 +38,7 @@ app.post("/generate-design", async (req, res) => {
     const input = req.body;
     const cacheKey = JSON.stringify(input);
 
-    /* ===== RETURN CACHE IF EXISTS ===== */
+    /* CACHE */
     if (designCache[cacheKey]) {
       console.log("⚡ Returning cached design");
       return res.json(designCache[cacheKey]);
@@ -51,56 +61,49 @@ Return ONLY valid JSON:
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        { role:"user", content: prompt }
-      ],
-      temperature: 0.7
+      messages:[{ role:"user", content: prompt }],
+      temperature:0.7
     });
 
-let imageUrl = null;
+    /* IMAGE GENERATION */
+    let imageUrl = null;
 
-/* ===== SAFE IMAGE GENERATION ===== */
-try {
+    try {
 
-  const imagePrompt = `
+      const imagePrompt = `
 Luxury abaya fashion photography.
 Color: ${input.fabric_color}
 Embroidery: ${input.embroidery_style}
 Placement: ${input.placement}
 Silhouette: ${input.silhouette}
 Occasion: ${input.occasion}.
-Full body mannequin, elegant studio background, premium fashion catalog style.
+Full body mannequin, premium fashion catalog style.
 `;
 
-  const imageResponse = await openai.images.generate({
-    model: "gpt-image-1",
-    prompt: imagePrompt,
-    size: "1024x1024"
-  });
+      const imageResponse = await openai.images.generate({
+        model: "gpt-image-1",
+        prompt: imagePrompt,
+        size: "1024x1024"
+      });
 
-if (imageResponse.data[0].url) {
-  imageUrl = imageResponse.data[0].url;
-} else if (imageResponse.data[0].b64_json) {
-  imageUrl = `data:image/png;base64,${imageResponse.data[0].b64_json}`;
-}
+      if (imageResponse.data[0].url) {
+        imageUrl = imageResponse.data[0].url;
+      } else if (imageResponse.data[0].b64_json) {
+        imageUrl = `data:image/png;base64,${imageResponse.data[0].b64_json}`;
+      }
 
-  console.log("🖼 Image generated");
+      console.log("🖼 Image generated");
 
-} catch(imgErr){
+    } catch(imgErr){
+      console.log("Image skipped:", imgErr.message);
+    }
 
-  console.log("Image skipped:", imgErr.message);
+    const result = {
+      result: response.choices[0].message.content,
+      image: imageUrl
+    };
 
-}
-
-const result = {
-  result: response.choices[0].message.content,
-  image: imageUrl
-};
-
-    /* ===== SAVE TO CACHE ===== */
     designCache[cacheKey] = result;
-
-    console.log("💾 Saved new design in cache");
 
     res.json(result);
 
@@ -109,14 +112,86 @@ const result = {
     console.log("AI ERROR:", err.message);
 
     res.status(500).json({
-      error: "AI failed"
+      error:"AI failed"
     });
 
   }
 
 });
 
-/* ===== DESIGN PURCHASE ===== */
+/* ===============================
+   SAVE DESIGN (PUBLISH)
+================================ */
+
+app.post("/save-design", (req,res)=>{
+
+  try{
+
+    const d = req.body;
+
+    const newDesign = {
+      id: Date.now(),
+      name: d.name,
+      description: d.description,
+      image: d.image,
+      points: 0,
+
+      /* ECONOMY */
+      purchased: false,
+      designer_status: "designer",
+
+      created: new Date()
+    };
+
+    designStore.push(newDesign);
+
+    res.json({
+      success:true,
+      design:newDesign
+    });
+
+  } catch(err){
+
+    res.status(500).json({
+      error:"Save failed"
+    });
+
+  }
+
+});
+
+/* ===============================
+   GET MARKETPLACE DESIGNS
+================================ */
+
+app.get("/designs", (req,res)=>{
+  res.json(designStore);
+});
+
+/* ===============================
+   LOAD SINGLE DESIGN
+================================ */
+
+app.get("/design/:id", (req,res)=>{
+
+  const found = designStore.find(
+    d => d.id == req.params.id
+  );
+
+  if(!found){
+    return res.status(404).json({
+      error:"Design not found"
+    });
+  }
+
+  res.json(found);
+
+});
+
+/* ===============================
+   PURCHASE (VERIFY DESIGNER)
+================================ */
+
 app.post("/purchase/:id", (req,res)=>{
 
   const design = designStore.find(
@@ -129,19 +204,21 @@ app.post("/purchase/:id", (req,res)=>{
     });
   }
 
-  /* unlock designer */
   design.purchased = true;
   design.designer_status = "verified";
 
   res.json({
     success:true,
-    message:"Designer verified!",
+    message:"Designer verified",
     design
   });
 
 });
 
-/* RAILWAY SAFE PORT */
+/* ===============================
+   SERVER START
+================================ */
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", ()=>{
