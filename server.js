@@ -188,8 +188,9 @@ app.get("/design/:id", (req,res)=>{
 
 });
 
+
 /* ===============================
-   PURCHASE (VERIFY DESIGNER)
+   PURCHASE (VERIFY + POINTS)
 ================================ */
 
 app.post("/purchase/:id", (req,res)=>{
@@ -204,12 +205,20 @@ app.post("/purchase/:id", (req,res)=>{
     });
   }
 
-  design.purchased = true;
-  design.designer_status = "verified";
+  /* First purchase unlocks verification */
+  if(!design.purchased){
+    design.purchased = true;
+    design.designer_status = "verified";
+  }
+
+  /* Points system */
+  if(design.designer_status === "verified"){
+    design.points += 10;
+  }
 
   res.json({
     success:true,
-    message:"Designer verified",
+    message:"Purchase successful",
     design
   });
 
